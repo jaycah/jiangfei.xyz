@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇游戏</title>
+    <style>
+        canvas {
+            display: block;
+            margin: 0 auto;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="400" height="400"></canvas>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gridSize = 20;
+        const gridWidth = canvas.width / gridSize;
+        const gridHeight = canvas.height / gridSize;
+
+        let snake = [{ x: 10, y: 10 }]; // 蛇的初始位置
+        let direction = 'right'; // 初始方向
+        let food = { x: 15, y: 15 }; // 食物的初始位置
+        let rainbowEgg = null; // 彩蛋初始为空
+        let score = 0; // 得分
+        let speed = 100; // 初始速度（毫秒）
+        let colors = ['green', 'blue', 'red', 'purple', 'orange']; // 颜色数组
+        let currentColorIndex = 0; // 当前颜色索引
+        let eggCount = 0; // 吃掉的蛋计数
+
+        // 绘制游戏画面
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // 绘制蛇
+            ctx.fillStyle = colors[currentColorIndex];
+            snake.forEach(segment => {
+                ctx.fillRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize);
+            });
+            // 绘制食物
+            ctx.fillStyle = 'red';
+            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize, gridSize);
+            // 绘制彩蛋
+            if (rainbowEgg) {
+                ctx.fillStyle = 'yellow';
+                ctx.fillRect(rainbowEgg.x * gridSize, rainbowEgg.y * gridSize, gridSize, gridSize);
+            }
+        }
+
+        // 蛇的移动逻辑
+        function move() {
+            let head = { ...snake[0] };
+            switch (direction) {
+                case 'up': head.y--; break;
+                case 'down': head.y++; break;
+                case 'left': head.x--; break;
+                case 'right': head.x++; break;
+            }
+            // 碰撞检测
+            if (head.x < 0 || head.x >= gridWidth || head.y < 0 || head.y >= gridHeight || snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+                alert('游戏结束！得分：' + score);
+                resetGame();
+                return;
+            }
+            snake.unshift(head);
+            // 检查是否吃到食物
+            if (head.x === food.x && head.y === food.y) {
+                score++;
+                eggCount++;
+                generateFood();
+                if (eggCount % 5 === 0) {
+                    shortenSnake(3); // 缩短3个单位
+                    speedUp(2); // 速度加快2个单位
+                    changeColor(); // 颜色改变
+                }
+                if (eggCount % 8 === 0) {
+                    generateRainbowEgg(); // 生成彩蛋
+                }
+            } else {
+                snake.pop();
+            }
+            // 检查是否吃到彩蛋
+            if (rainbowEgg && head.x === rainbowEgg.x && head.y === rainbowEgg.y) {
+                reverseDirection(); // 倒转方向
+                rainbowEgg = null; // 彩蛋消失
+            }
+        }
+
+        // 生成食物
+        function generateFood() {
+            food = {
+                x: Math.floor(Math.random() * gridWidth),
+                y: Math.floor(Math.random() * gridHeight)
+            };
+            while (snake.some(segment => segment.x === food.x && segment.y === food.y)) {
+                food = {
+                    x: Math.floor(Math.random() * gridWidth),
+                    y: Math.floor(Math.random() * gridHeight)
+                };
+            }
+        }
+
+        // 生成彩蛋
+        function generateRainbowEgg() {
+            rainbowEgg = {
+                x: Math.floor(Math.random() * gridWidth),
+                y: Math.floor(Math.random() * gridHeight)
+            };
+            while (snake.some(segment => segment.x === rainbowEgg.x && segment.y === rainbowEgg.y) || (rainbowEgg.x === food.x && rainbowEgg.y === food.y)) {
+                rainbowEgg = {
+                    x: Math.floor(Math.random() * gridWidth),
+                    y: Math.floor(Math.random() * gridHeight)
+                };
+            }
+        }
+
+        // 缩短蛇的长度
+        function shortenSnake(units) {
+            if (snake.length > units) {
+                snake.splice(-units, units);
+            } else {
+                snake = [snake[0]]; // 至少保留头部
+            }
+        }
+
+        // 加快速度
+        function speedUp(units) {
+            speed = Math.max(50, speed - units * 10); // 速度加快，最快50ms
+        }
+
+        // 改变颜色
+        function changeColor() {
+            currentColorIndex = (currentColorIndex + 1) % colors.length;
+        }
+
+        // 倒转方向
+        function reverseDirection() {
+            switch (direction) {
+                case 'up': direction = 'down'; break;
+                case 'down': direction = 'up'; break;
+                case 'left': direction = 'right'; break;
+                case 'right': direction = 'left'; break;
+            }
+        }
+
+        // 重置游戏
+        function resetGame() {
+            snake = [{ x: 10, y: 10 }];
+            direction = 'right';
+            score = 0;
+            eggCount = 0;
+            speed = 100;
+            currentColorIndex = 0;
+            rainbowEgg = null;
+            generateFood();
+        }
+
+        // 游戏主循环
+        function gameLoop() {
+            move();
+            draw();
+            setTimeout(gameLoop, speed);
+        }
+
+        // 键盘控制
+        document.addEventListener('keydown', (event) => {
+            switch (event.key) {
+                case 'ArrowUp': if (direction !== 'down') direction = 'up'; break;
+                case 'ArrowDown': if (direction !== 'up') direction = 'down'; break;
+                case 'ArrowLeft': if (direction !== 'right') direction = 'left'; break;
+                case 'ArrowRight': if (direction !== 'left') direction = 'right'; break;
+            }
+        });
+
+        generateFood();
+        gameLoop();
+    </script>
+</body>
+</html>
