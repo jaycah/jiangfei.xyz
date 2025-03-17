@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>彩色贪吃蛇</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="game-container">
+        <div class="score-container">
+            <div class="score">分数: <span id="score">0</span></div>
+            <div class="highscore">最高分: <span id="highscore">0</span></div>
+        </div>
+        <canvas id="gameCanvas" width="600" height="600"></canvas>
+        <div class="controls">
+            <p>使用方向键控制蛇的移动</p>
+            <p>特殊规则:</p>
+            <ul>
+                <li>每吃4个蛋，蛇会随机变色</li>
+                <li>每吃5个蛋，蛇的长度减少三分之一</li>
+                <li>每吃6个蛋，出现随机彩蛋：</li>
+                <ul>
+                    <li>分数加倍</li>
+                    <li>蛇头蛇身位置互换</li>
+                    <li>蛇身从中间分为两段</li>
+                </ul>
+            </ul>
+            <button id="startBtn">开始游戏</button>
+            <button id="restartBtn" style="display: none;">重新开始</button>
+        </div>
+    </div>
+    <div id="gameOver" class="game-over">
+        <div class="game-over-content">
+            <h2>游戏结束</h2>
+            <p>你的分数: <span id="finalScore">0</span></p>
+            <button id="playAgainBtn">再玩一次</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
