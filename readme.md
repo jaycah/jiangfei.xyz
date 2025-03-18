@@ -1,0 +1,2 @@
+# sanguosha
+sanguosha：photo
