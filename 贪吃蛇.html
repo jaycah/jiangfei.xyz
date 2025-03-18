@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>贪吃蛇游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f2f5;
+            font-family: Arial, sans-serif;
+        }
+        .game-container {
+            text-align: center;
+        }
+        #gameCanvas {
+            border: 2px solid #333;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .score {
+            font-size: 24px;
+            margin: 20px 0;
+            color: #333;
+        }
+        .controls {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .game-over {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+        .speed-level {
+            font-size: 18px;
+            color: #666;
+            margin: 10px 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="score">得分: <span id="scoreValue">0</span></div>
+        <div class="speed-level">速度等级: <span id="speedLevel">1</span></div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+        <div class="controls">
+            使用键盘箭头键控制方向 ↑←↓→<br>
+            每得50分提升一个速度等级<br>
+            每50分出现一次超级果实，吃到后蛇身变短并变色！
+        </div>
+        <div class="game-over" id="gameOver">
+            <h2>游戏结束</h2>
+            <p>最终得分: <span id="finalScore">0</span></p>
+            <p>最终速度等级: <span id="finalSpeedLevel">1</span></p>
+            <button onclick="startNewGame()">重新开始</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const gridSize = 20;
+        const tileCount = canvas.width / gridSize;
+
+        let snake = [];
+        let food = { x: 0, y: 0 };
+        let superFruit = null;
+        let direction = 'right';
+        let score = 0;
+        let baseSpeed = 150;
+        let speedLevel = 1;
+        let gameLoop;
+        let isGameOver = false;
+        let snakeColor = '#4CAF50';
+        let superFruitTimer = null;
+
+        // 彩虹颜色数组
+        const rainbowColors = [
+            '#FF0000', // 红
+            '#FF7F00', // 橙
+            '#FFFF00', // 黄
+            '#00FF00', // 绿
+            '#0000FF', // 蓝
+            '#4B0082', // 靛
+            '#9400D3'  // 紫
+        ];
+        let currentColorIndex = 0;
+
+        function calculateGameSpeed() {
+            const newSpeedLevel = Math.floor(score / 50) + 1;
+            
+            if (newSpeedLevel !== speedLevel) {
+                speedLevel = newSpeedLevel;
+                document.getElementById('speedLevel').textContent = speedLevel;
+                
+                if (gameLoop) clearInterval(gameLoop);
+                const currentSpeed = Math.max(baseSpeed - (speedLevel - 1) * 10, 50);
+                gameLoop = setInterval(gameUpdate, currentSpeed);
+
+                // 每50分生成一个超级果实
+                if (score % 50 === 0) {
+                    generateSuperFruit();
+                }
+            }
+        }
+
+        function generateSuperFruit() {
+            // 清除之前的超级果实计时器
+            if (superFruitTimer) {
+                clearTimeout(superFruitTimer);
+            }
+
+            // 生成新的超级果实
+            do {
+                superFruit = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount)
+                };
+            } while (
+                (food.x === superFruit.x && food.y === superFruit.y) ||
+                snake.some(segment => segment.x === superFruit.x && segment.y === superFruit.y)
+            );
+
+            // 10秒后移除超级果实
+            superFruitTimer = setTimeout(() => {
+                superFruit = null;
+            }, 10000);
+        }
+
+        function startNewGame() {
+            snake = [
+                { x: 5, y: 5 },
+                { x: 4, y: 5 },
+                { x: 3, y: 5 }
+            ];
+            
+            direction = 'right';
+            score = 0;
+            speedLevel = 1;
+            snakeColor = '#4CAF50';
+            superFruit = null;
+            if (superFruitTimer) {
+                clearTimeout(superFruitTimer);
+            }
+            
+            document.getElementById('scoreValue').textContent = score;
+            document.getElementById('speedLevel').textContent = speedLevel;
+            document.getElementById('gameOver').style.display = 'none';
+            isGameOver = false;
+            
+            generateFood();
+            
+            if (gameLoop) clearInterval(gameLoop);
+            gameLoop = setInterval(gameUpdate, baseSpeed);
+        }
+
+        function generateFood() {
+            do {
+                food = {
+                    x: Math.floor(Math.random() * tileCount),
+                    y: Math.floor(Math.random() * tileCount)
+                };
+            } while (
+                snake.some(segment => segment.x === food.x && segment.y === food.y) ||
+                (superFruit && food.x === superFruit.x && food.y === superFruit.y)
+            );
+        }
+
+        function drawGame() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // 绘制蛇
+            snake.forEach((segment, index) => {
+                if (snakeColor === 'rainbow') {
+                    // 使用彩虹颜色
+                    ctx.fillStyle = rainbowColors[(index + currentColorIndex) % rainbowColors.length];
+                } else {
+                    ctx.fillStyle = snakeColor;
+                }
+                ctx.fillRect(segment.x * gridSize + 1, segment.y * gridSize + 1, gridSize - 2, gridSize - 2);
+            });
+            
+            // 绘制普通食物
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(food.x * gridSize + 1, food.y * gridSize + 1, gridSize - 2, gridSize - 2);
+
+            // 绘制超级果实
+            if (superFruit) {
+                ctx.fillStyle = '#FFD700'; // 金色
+                ctx.beginPath();
+                ctx.arc(
+                    superFruit.x * gridSize + gridSize/2,
+                    superFruit.y * gridSize + gridSize/2,
+                    gridSize/2 - 1,
+                    0,
+                    Math.PI * 2
+                );
+                ctx.fill();
+
+                // 添加闪光效果
+                ctx.strokeStyle = '#FFF';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+
+        function moveSnake() {
+            const head = { x: snake[0].x, y: snake[0].y };
+            
+            switch (direction) {
+                case 'up': head.y--; break;
+                case 'down': head.y++; break;
+                case 'left': head.x--; break;
+                case 'right': head.x++; break;
+            }
+            
+            if (checkCollision(head)) {
+                endGame();
+                return;
+            }
+            
+            snake.unshift(head);
+            
+            // 检查是否吃到超级果实
+            if (superFruit && head.x === superFruit.x && head.y === superFruit.y) {
+                score += 20;
+                document.getElementById('scoreValue').textContent = score;
+                
+                // 缩短蛇身4节（如果可能的话）
+                const reduceLength = Math.min(4, snake.length - 3); // 确保蛇至少保持3节长
+                for (let i = 0; i < reduceLength; i++) {
+                    snake.pop();
+                }
+
+                // 改变蛇的颜色为彩虹效果
+                snakeColor = 'rainbow';
+                superFruit = null;
+                if (superFruitTimer) {
+                    clearTimeout(superFruitTimer);
+                }
+
+                // 5秒后恢复原始颜色
+                setTimeout(() => {
+                    snakeColor = '#4CAF50';
+                }, 5000);
+            }
+            // 检查是否吃到普通食物
+            else if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                document.getElementById('scoreValue').textContent = score;
+                calculateGameSpeed();
+                generateFood();
+            } else {
+                snake.pop();
+            }
+
+            // 如果是彩虹模式，更新颜色索引
+            if (snakeColor === 'rainbow') {
+                currentColorIndex = (currentColorIndex + 1) % rainbowColors.length;
+            }
+        }
+
+        function checkCollision(head) {
+            // 检查是否撞墙
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                return true;
+            }
+            
+            // 检查是否撞到自己
+            return snake.some(segment => segment.x === head.x && segment.y === head.y);
+        }
+
+        function gameUpdate() {
+            if (isGameOver) return;
+            moveSnake();
+            drawGame();
+        }
+
+        function endGame() {
+            isGameOver = true;
+            clearInterval(gameLoop);
+            if (superFruitTimer) {
+                clearTimeout(superFruitTimer);  
+            }
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('finalSpeedLevel').textContent = speedLevel;
+            document.getElementById('gameOver').style.display = 'block';  
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (isGameOver) return;
+            
+            switch (event.key) {
+                case 'ArrowUp':
+                    if (direction !== 'down') direction = 'up';
+                    break;
+                case 'ArrowDown':
+                    if (direction !== 'up') direction = 'down';
+                    break;
+                case 'ArrowLeft':
+                    if (direction !== 'right') direction = 'left';
+                    break;
+                case 'ArrowRight':
+                    if (direction !== 'left') direction = 'right';
+                    break;
+            }
+        });
+
+        startNewGame();
+    </script>
+</body>
+</html>
